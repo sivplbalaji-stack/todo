@@ -11,8 +11,10 @@ export default function Home() {
   const [input, setInput] = useState<string>("");
   const [tasks, setTasks] = useState<Task[]>([]);
   const inpRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(()=>{
+    setLoading(true);
     const storedTasks = localStorage.getItem("tasks");
     if(storedTasks){
       setTasks(JSON.parse(storedTasks));
@@ -20,6 +22,7 @@ export default function Home() {
       setTasks([]);
     }
     inpRef.current?.focus();
+    setLoading(false);
   },[]);
   
   const addTask = ()=>{
@@ -60,6 +63,14 @@ export default function Home() {
     )
   }
 
+  if(loading){
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <p className="text-xl text-gray-500">Loading...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <main className="bg-white p-6 rounded-lg shadow-lg w-96">
@@ -82,6 +93,7 @@ export default function Home() {
                 Add Task
               </button>
           </div>
+
           <ul className="mt-4 space-y-2">
               {
                 tasks.map(task => (
