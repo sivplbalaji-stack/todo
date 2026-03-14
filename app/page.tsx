@@ -1,121 +1,140 @@
-"use client"
-import React, { useState, useRef, useEffect } from "react";
+"use client";
 
-export interface Task{
-  id: number,
-  text: String,
-  completed: Boolean
+import React, { useState, useRef, useEffect, useCallback } from "react";
+
+export interface Task {
+  id: number;
+  text: string;
+  completed: boolean;
 }
 
+/* ---------- Custom Hook ---------- */
+const useInputFocus = () => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const focusInput = useCallback(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  return { inputRef, focusInput };
+};
+
+/* ---------- Task Item Component ---------- */
+interface TaskItemProps {
+  task: Task;
+  onToggle: (id: number) => void;
+  onDelete: (id: number) => void;
+}
+
+const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) => {
+  return (
+    <li className="flex justify-between items-center bg-gray-50 p-2 rounded">
+      <span
+        onClick={() => onToggle(task.id)}
+        className={`cursor-pointer ${
+          task.completed ? "line-through text-gray-500" : ""
+        }`}
+      >
+        {task.text}
+      </span>
+
+      <button
+        onClick={() => onDelete(task.id)}
+        className="text-white bg-red-500 px-3 py-1 rounded hover:bg-red-600"
+      >
+        Delete
+      </button>
+    </li>
+  );
+};
+
+/* ---------- Main Page ---------- */
 export default function Home() {
   const [input, setInput] = useState<string>("");
   const [tasks, setTasks] = useState<Task[]>([]);
-  const inpRef = useRef<HTMLInputElement>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const { inputRef, focusInput } = useInputFocus();
 
-  useEffect(()=>{
-    setLoading(true);
-    const storedTasks = localStorage.getItem("tasks");
-    if(storedTasks){
-      setTasks(JSON.parse(storedTasks));
-    } else {
-      setTasks([]);
+  /* Load tasks */
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("tasks");
+      if (stored) setTasks(JSON.parse(stored));
+    } catch {
+      console.error("Failed to load tasks");
     }
-    inpRef.current?.focus();
-    setLoading(false);
-  },[]);
-  
-  const addTask = ()=>{
-    if(!input.trim()) return;
+
+    focusInput();
+  }, [focusInput]);
+
+  /* Save tasks */
+  useEffect(() => {
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+  }, [tasks]);
+
+  /* Add task */
+  const addTask = () => {
+    if (!input.trim()) return;
+
     const newTask: Task = {
       id: Date.now(),
-      text: input,
-      completed: false
-    }
+      text: input.trim(),
+      completed: false,
+    };
 
-    setTasks([...tasks, newTask]);
+    setTasks((prev) => [...prev, newTask]);
     setInput("");
-    inpRef.current?.focus();
-  }
+    focusInput();
+  };
 
-  const deleteTask= (id:number) =>{
-    const taskExists = tasks.some(task=> task.id === id);
-    if(!taskExists) return;
+  /* Delete task */
+  const deleteTask = (id: number) => {
+    setTasks((prev) => prev.filter((task) => task.id !== id));
+  };
 
-    setTasks(tasks.filter(task => task.id !== id));
-  }
-
-  const toggleTask = (id:number)=>{
-    setTasks(
-      tasks.map(task =>
-        task.id === id
-        ? { ...task, completed: !task.completed}
-        : task
+  /* Toggle task */
+  const toggleTask = (id: number) => {
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === id ? { ...task, completed: !task.completed } : task
       )
-    )
-
-    setTasks(
-      tasks.map(task =>
-        task.id === id
-          ? { ...task, completed: !task.completed }
-          : task
-      )
-    )
-  }
-
-  if(loading){
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-xl text-gray-500">Loading...</p>
-      </div>
-    )
-  }
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <main className="bg-white p-6 rounded-lg shadow-lg w-96">
-        
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="text-2xl font-bold text-center mb-4">ToDo list</h1>
-          <div className="flex gap-2">
-              <input 
-                ref={inpRef}
-                type="text" 
-                value={input} 
-                onChange={(e) =>{setInput(e.target.value)}}
-                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1"
-              />
 
-              <button 
-                onClick={addTask}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-              >
-                Add Task
-              </button>
-          </div>
+        <h1 className="text-2xl font-bold text-center mb-4">Todo List</h1>
 
-          <ul className="mt-4 space-y-2">
-              {
-                tasks.map(task => (
-                  <li key={task.id} className=" justify-between items-center bg-gray-50 p-2 rounded">
-                    <span 
-                      onClick={() => toggleTask(task.id)} 
-                      className={`cursor-pointer ${task.completed ? "line-through text-gray-500" : ""}`}
-                    >
-                      {task.text}
-                    </span>
-                    <button 
-                      className="text-white bg-red-500 px-3 py-1 rounded hover:bg-red-600 ml-2" 
-                      onClick={() => deleteTask(task.id)}
-                    >
-                      Delete
-                    </button>
-                  </li>
-                  )
-                )
-              }
-            </ul>
-          </div>
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            className="px-4 py-2 border rounded-md flex-1 focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter task..."
+          />
+
+          <button
+            onClick={addTask}
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Add
+          </button>
+        </div>
+
+        <ul className="mt-4 space-y-2">
+          {tasks.map((task) => (
+            <TaskItem
+              key={task.id}
+              task={task}
+              onToggle={toggleTask}
+              onDelete={deleteTask}
+            />
+          ))}
+        </ul>
+
       </main>
     </div>
   );
